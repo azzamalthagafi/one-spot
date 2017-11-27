@@ -1,8 +1,15 @@
-const search = (query) => {
+const search = (results) => {
   return {
     type: 'SEARCH',
-    query: query
+    results: results
   };
 };
 
-export { search };
+const addSong = (song) => {
+	return {
+		type: 'ADD_SONG',
+		song: song
+	};
+};
+
+export { search, addSong };

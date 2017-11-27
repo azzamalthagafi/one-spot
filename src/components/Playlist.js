@@ -1,28 +1,42 @@
 import React from 'react';
 
 export default class Playlist extends React.Component {
+  constructor(props) {
+    super(props);
+  }
+
   render() {
+
     const divs = this.props.list.map((result, i) => {
-      return 
-        <div className="row">
-          <div className="col-sm-4">{i}</div>
-          <div className="col-sm-4">{result.title}</div>
-          <div className="col-sm-4">{result.artist}</div>
-        </div>
+      return (
+        <tr>
+          <th scope="row">{i} </th>
+          <td>
+            <a href={result.url} target="_blank" >
+            <img className="img-rounded" width="48" height="48" src={result.imgurl}/>
+            </a>
+          </td>
+          <td>{result.title}</td>
+          <td>{result.artist}</td>
+        </tr>
+      );
       }
     );
 
     return (
-      <div className="playlist-content">
-        <div className="row list-header">
-          <div className="col-sm-4">#</div>
-          <div className="col-sm-4">Title</div>
-          <div className="col-sm-4">Artist</div>
-        </div>
-        <div className="row list-content">
+      <table className="table">
+        <thead>
+          <tr>
+            <th className="text-center">#</th>
+            <th className="text-center"></th>
+            <th className="text-center">Title</th>
+            <th className="text-center">Artist</th>
+          </tr>
+        </thead>
+        <tbody>
           {divs}
-        </div>
-      </div>
+        </tbody>
+      </table>
     );
   }
 };

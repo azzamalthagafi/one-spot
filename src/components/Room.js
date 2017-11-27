@@ -11,20 +11,24 @@ export default class Room extends React.Component {
 
   constructor(props) {
     super(props);
-
+    this.state = {results: [], list: []};
     // redux store
-    this.store = createStore(reducers, {"results": []});
+    this.store = createStore(reducers, this.state);
+  }
+
+  componentDidMount() {
+    this.store.subscribe(function () {
+      this.setState(this.store.getState());
+    }.bind(this));
   }
 
   render() {
     const id = this.props.params.id;
     
-    const songs = [];
-
     const searchdiv = (
       <div class="search-content">
         <div className="row"> <SearchBar store={this.store}/> </div>
-        <div className="row"> <SearchResults store={this.store}/> </div>
+        <div className="row"> <SearchResults store={this.store} results={this.state.results}/> </div>
       </div>
     );
 
@@ -33,7 +37,7 @@ export default class Room extends React.Component {
         <div className="row h1">Welcome to {id}</div>
         <div className="row">
           <div className="col-xs-4 text-center"> {searchdiv} </div>
-          <div className="col-xs-8 text-center"> <Playlist list={songs}/> </div>
+          <div className="col-xs-8 text-center"> <Playlist list={this.state.list}/> </div>
         </div>
         <div className="navigateBack">
           <Link to="/">Home Page</Link>

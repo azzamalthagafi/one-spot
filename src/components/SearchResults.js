@@ -5,23 +5,29 @@ import * as actions from '../actions/index.js';
 export default class SearchResults extends React.Component {
   constructor(props) {
     super(props);
-    this.state = {results: []}; 
+    this.onClick = this.onClick.bind(this);
   }
 
-  componentDidMount() {
-    this.props.store.subscribe(function () {
-      this.setState(this.props.store.getState());
-    }.bind(this));
+  onClick(song) {
+    this.props.store.dispatch(actions.addSong(song));
   }
 
   render() {
-    const divs = this.state.results.map((result, i) => {
-      console.log(result);
+    const divs = this.props.results.map((result, i) => {
       return (
         <tr>
-          <th scope="row">{i}</th>
+          <th scope="row">
+            <a href={result.url} target="_blank" >
+            <img className="img-rounded" width="48" height="48" src={result.imgurl}/>
+            </a>
+          </th>
           <td>{result.title}</td>
           <td>{result.artist}</td>
+          <td>
+            <button type="button" className="btn btn-outline-primary" onClick={() => { this.onClick(result); } }>
+              Add
+            </button>
+          </td>
         </tr>
       );
       }
@@ -31,9 +37,10 @@ export default class SearchResults extends React.Component {
       <table className="table">
         <thead>
           <tr>
-            <th className="text-center">#</th>
+            <th className="text-center"></th>
             <th className="text-center">Title</th>
             <th className="text-center">Artist</th>
+            <th className="text-center"></th>
           </tr>
         </thead>
         <tbody>

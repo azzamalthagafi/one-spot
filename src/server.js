@@ -18,6 +18,11 @@ app.set('views', path.join(__dirname, 'views'));
 // define the folder that will be used for static assets
 app.use(Express.static(path.join(__dirname, 'static')));
 
+app.use( bodyParser.json() );       // to support JSON-encoded bodies
+app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
+  extended: true
+})); 
+
 // universal routing and rendering
 app.get('*', (req, res) => {
   match(
@@ -71,8 +76,15 @@ spotifyApi.clientCredentialsGrant()
     console.log('Something went wrong when retrieving an access token', err.message);
 });
 
-app.post('search', (req, res) => {
-  res.send('nice');
+app.post('/search', (req, res) => {
+  let query = req.body.query
+
+  spotifyApi.searchTracks(query)
+  .then(function(data) {
+    res.send(data);
+  }, function(err) {
+    res.send(err);
+  });
 });
 // start the server
 const port = process.env.PORT || 3000;
