@@ -5,10 +5,22 @@ import React from 'react';
 import { renderToString } from 'react-dom/server';
 import { match, RouterContext } from 'react-router';
 import routes from './routes';
-var bodyParser = require('body-parser')
 import NotFoundPage from './components/NotFoundPage';
+var bodyParser = require('body-parser')
 var spotifyWebAPI = require('spotify-web-api-node');
+var mongoose = require('mongoose');
+var Schema = mongoose.Schema;
 
+/******************** DATABASE SCHEMA *******************/
+// define roomSchema
+var roomSchema = new Schema({
+  id: { type: String, required: true, unique: true },
+  list: [ { title: String, artist: String, imgurl: String, url: String } ],
+});
+var Room = mongoose.model('Room', roomSchema);
+
+
+/******************** EXPRESS SETUP *******************/
 // initialize the server and configure support for ejs templates
 const app = new Express();
 const server = new Server(app);
@@ -56,7 +68,7 @@ app.get('*', (req, res) => {
   );
 });
 
-// connect to Spotify
+/******************** SPOTIFY API SETUP *******************/
 const myid = "08d020451ba7408fa630fcfa73326016";
 const mysecret = "e4211eff2f01435493f3a684787f74d6";
 
@@ -72,26 +84,78 @@ spotifyApi.clientCredentialsGrant()
 
     // Save the access token so that it's used in future calls
     spotifyApi.setAccessToken(data.body['access_token']);
+
+    // route '/search' with Spotify
+    app.post('/search', (req, res) => {
+      let query = req.body.query;
+
+      spotifyApi.searchTracks(query, {limit: 10})
+      .then(function(data) {
+        res.send(data);
+      }, function(err) {
+        res.send(err);
+      });
+    });
   }, function(err) {
     console.log('Something went wrong when retrieving an access token', err.message);
 });
 
-app.post('/search', (req, res) => {
-  let query = req.body.query
 
-  spotifyApi.searchTracks(query)
-  .then(function(data) {
-    res.send(data);
-  }, function(err) {
-    res.send(err);
-  });
-});
-// start the server
+
+/******************** LISTEN & CONNECT TO DB *******************/
 const port = process.env.PORT || 3000;
 const env = process.env.NODE_ENV || 'production';
-server.listen(port, err => {
-  if (err) {
-    return console.error(err);
-  }
-  console.info(`Server running on http://localhost:${port} [${env}]`);
+
+mongoose.connect('mongodb://localhost/one-spot');
+
+// start listening once connection is opened
+mongoose.connection.on('open', function () {
+  /* FOR DEBUGGING
+  mongoose.connection.db.listCollections().toArray(function (err, names) {
+    if (err) {
+      console.log(err);
+    } else {
+      console.log(names);
+    }
+  });
+  */
+
+  server.listen(port, err => {
+      if (err) {
+        return console.error(err);
+      }
+      console.info(`Server running on http://localhost:${port} [${env}]`);
+  });
+});
+
+let testroom = new Room( { id: 'test-room', list: [] } );
+testroom.save();
+
+/******************** EXPRESS POST ROUTING *******************/
+
+app.post('/addSong', (req, res) => {
+  let song = req.body.song;
+  let id = req.body.id;
+  let room;
+  Room.find({id: id}, (err, rooms) => {
+    room = rooms[0]; // rooms are unique so there must be a single elt
+    room.list.push(song);
+    room.save();
+  });
+  res.send('"' + song.title + '" by "' + song.artist + '" added to room "' + id + '"');
+});
+
+app.post('/getPlaylist', (req, res) => {
+  let id = req.body.id;
+  let list = [];
+  Room.find({id: id}, (err, rooms) => {
+    if (!rooms.length) { 
+      let room = new Room({id: id, list: []});
+      room.save();
+    } else {
+      let room = rooms[0]; // rooms are unique so there must be a single elt
+      list = room.list;
+    }
+    res.send(list);
+  });
 });

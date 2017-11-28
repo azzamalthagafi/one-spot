@@ -6,12 +6,15 @@ import * as actions from '../actions/index.js';
 import SearchBar from './SearchBar';
 import SearchResults from './SearchResults';
 import Playlist from './Playlist';
+import $ from 'jquery';
+
 
 export default class Room extends React.Component {
 
   constructor(props) {
     super(props);
     this.state = {results: [], list: []};
+
     // redux store
     this.store = createStore(reducers, this.state);
   }
@@ -20,6 +23,19 @@ export default class Room extends React.Component {
     this.store.subscribe(function () {
       this.setState(this.store.getState());
     }.bind(this));
+
+    var self = this;
+    $.ajax({
+        method: "POST",
+        url: "http://localhost:3000/getPlaylist",
+        data: {
+          "id": self.props.params.id
+        },
+        success: function(list) {
+          self.state.list = list;
+          self.forceUpdate();
+      }
+    });
   }
 
   render() {
@@ -27,8 +43,8 @@ export default class Room extends React.Component {
     
     const searchdiv = (
       <div class="search-content">
-        <div className="row"> <SearchBar store={this.store}/> </div>
-        <div className="row"> <SearchResults store={this.store} results={this.state.results}/> </div>
+        <div className="row"> <SearchBar store={this.store} id={id}/> </div>
+        <div className="row"> <SearchResults store={this.store} results={this.state.results} id={id}/> </div>
       </div>
     );
 

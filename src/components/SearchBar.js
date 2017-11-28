@@ -32,9 +32,7 @@ export default class SearchBar extends React.Component {
           if (result.body == undefined) {
             var simplified = []
           } else {
-            var sliced = result.body.tracks.items.slice(0, 10);
-            console.log(sliced);
-            var simplified = sliced.map((result) => {
+            var simplified = result.body.tracks.items.map((result) => {
             var artist = result.artists[0].name;
             if (result.artists.length > 1) {
               for (var i = 0; i < result.artists.length; i++) {

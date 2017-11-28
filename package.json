@@ -6,7 +6,7 @@
   "scripts": {
     "restart": "NODE_ENV=production node_modules/.bin/webpack -p ; NODE_ENV=production node_modules/.bin/babel-node --presets react,es2015 src/server.js",
     "compile": "NODE_ENV=production node_modules/.bin/webpack -p",
-    "start": "NODE_ENV=production node_modules/.bin/babel-node --presets react,es2015 src/server.js", 
+    "start": "NODE_ENV=production node_modules/.bin/babel-node --presets react,es2015 src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -28,6 +28,8 @@
     "ejs": "^2.5.7",
     "express": "^4.14.1",
     "jquery": "^3.2.1",
+    "mongodb": "^2.2.33",
+    "mongoose": "^4.13.5",
     "najax": "^1.0.3",
     "react": "^15.3.2",
     "react-dom": "^15.3.2",

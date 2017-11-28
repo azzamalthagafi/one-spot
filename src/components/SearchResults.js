@@ -9,7 +9,19 @@ export default class SearchResults extends React.Component {
   }
 
   onClick(song) {
-    this.props.store.dispatch(actions.addSong(song));
+    var self = this;
+    $.ajax({
+        method: "POST",
+        url: "http://localhost:3000/addSong",
+        data: {
+          "song": song,
+          "id": self.props.id
+        },
+        success: function(result) {
+          self.props.store.dispatch(actions.addSong(song));
+        }
+      }
+    );
   }
 
   render() {
@@ -33,20 +45,27 @@ export default class SearchResults extends React.Component {
       }
     );
 
-    return (
-      <table className="table">
-        <thead>
-          <tr>
-            <th className="text-center"></th>
-            <th className="text-center">Title</th>
-            <th className="text-center">Artist</th>
-            <th className="text-center"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {divs}
-        </tbody>
-      </table>
-    );
+    if (divs.length) {
+      return (
+        <table className="table">
+          <thead>
+            <tr>
+              <th className="text-center"></th>
+              <th className="text-center">Title</th>
+              <th className="text-center">Artist</th>
+              <th className="text-center"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {divs}
+          </tbody>
+        </table>
+      );
+    } else {
+      return (
+        <table className="table">
+        </table>
+      );
+    }
   }
 };
