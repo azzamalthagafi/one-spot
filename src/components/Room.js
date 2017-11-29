@@ -7,6 +7,8 @@ import SearchBar from './SearchBar';
 import SearchResults from './SearchResults';
 import Playlist from './Playlist';
 import $ from 'jquery';
+import io from 'socket.io-client';
+
 
 
 export default class Room extends React.Component {
@@ -24,6 +26,17 @@ export default class Room extends React.Component {
       this.setState(this.store.getState());
     }.bind(this));
 
+    this.updatePlaylist();
+
+    // Socket setup
+    var socket = io.connect('http://localhost:3000', {query: 'id=' + this.props.params.id });
+
+    socket.on('Playlist_updated', () => {
+      this.updatePlaylist();
+    });
+  }
+
+  updatePlaylist() {
     var self = this;
     $.ajax({
         method: "POST",
@@ -32,8 +45,9 @@ export default class Room extends React.Component {
           "id": self.props.params.id
         },
         success: function(list) {
-          self.state.list = list;
-          self.forceUpdate();
+          self.setState((prevState, props) => {
+            return {results: prevState.results, list: list};
+          });
       }
     });
   }
@@ -50,7 +64,7 @@ export default class Room extends React.Component {
 
     return (
       <div className="app-content">
-        <div className="row h1">Welcome to {id}</div>
+        <div className="row h3">Welcome to {id}</div>
         <div className="row">
           <div className="col-xs-4 text-center"> {searchdiv} </div>
           <div className="col-xs-8 text-center"> <Playlist list={this.state.list}/> </div>
@@ -61,4 +75,5 @@ export default class Room extends React.Component {
       </div>
     );
   }
+
 };

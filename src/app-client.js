@@ -5,3 +5,4 @@ import AppRoutes from './components/AppRoutes';
 window.onload = () => {
   ReactDOM.render(<AppRoutes/>, document.getElementById('main'));
 };
+

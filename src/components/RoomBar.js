@@ -16,15 +16,17 @@ export default class RoomBar extends React.Component {
 
   render() {
     return (
-      <form onSubmit={this.handleSubmit}>
-        <label>
-          Room ID:
-          <input type="text" value={this.state.value} onChange={this.handleChange} />
-        </label>
-        <Link to={`/room/${this.state.value}`}>
-          <label>Join</label>
-        </Link>
-      </form>
+      <div className="row vertical-align">
+        <div className="col-xs-2 col-xs-offset-2">
+          <label className="h4">
+           Room ID:
+         </label>
+        </div>
+        <div className="col-xs-4">
+          <input className="col-xs-12 input-sm" type="text" value={this.state.value} onChange={this.handleChange} />
+        </div>
+        <a href={`/room/${this.state.value}`} className="btn btn-success col-xs-2" role="button"> Join </a>
+      </div>
     );
   }
 }

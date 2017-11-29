@@ -24,6 +24,8 @@ var Room = mongoose.model('Room', roomSchema);
 // initialize the server and configure support for ejs templates
 const app = new Express();
 const server = new Server(app);
+const io = require('socket.io')(server);
+
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
 
@@ -132,7 +134,6 @@ let testroom = new Room( { id: 'test-room', list: [] } );
 testroom.save();
 
 /******************** EXPRESS POST ROUTING *******************/
-
 app.post('/addSong', (req, res) => {
   let song = req.body.song;
   let id = req.body.id;
@@ -142,6 +143,10 @@ app.post('/addSong', (req, res) => {
     room.list.push(song);
     room.save();
   });
+
+  // emit socket event
+  io.in(id).emit('Playlist_updated');
+
   res.send('"' + song.title + '" by "' + song.artist + '" added to room "' + id + '"');
 });
 
@@ -158,4 +163,14 @@ app.post('/getPlaylist', (req, res) => {
     }
     res.send(list);
   });
+});
+
+
+/******************** SOCKETIO SETUP *******************/
+io.on('connection', (socket) => {
+  // socket joins a room
+  let query = socket.handshake.query;
+  let id = socket.handshake.query.id;
+  console.log(query);
+  socket.join(id);
 });

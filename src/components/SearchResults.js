@@ -36,7 +36,7 @@ export default class SearchResults extends React.Component {
           <td>{result.title}</td>
           <td>{result.artist}</td>
           <td>
-            <button type="button" className="btn btn-outline-primary" onClick={() => { this.onClick(result); } }>
+            <button type="button" className="btn btn-success" onClick={() => { this.onClick(result); } }>
               Add
             </button>
           </td>
