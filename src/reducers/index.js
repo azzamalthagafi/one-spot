@@ -13,6 +13,10 @@ const mainReducer = (state, action) => {
     return _.assign({}, state, {list: list});
   }
 
+  case 'UPDATE_PLAYLIST': {
+    return _.assign({}, state, {list: action.list});
+  }
+
   }
   return state;
 };

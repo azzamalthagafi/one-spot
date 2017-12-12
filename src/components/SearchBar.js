@@ -11,44 +11,11 @@ export default class SearchBar extends React.Component {
     this.handleChange = this.handleChange.bind(this);
   }
 
-  componentDidMount() {
-    this.props.store.subscribe(function () {
-      this.setState(this.props.store.getState());
-    }.bind(this));
-  }
-
   handleChange(event) {
     this.setState({value: event.target.value});
 
-    // fetch results from server then dispatch search action
-    var self = this;
-    $.ajax({
-        method: "POST",
-        url: "http://localhost:3000/search",
-        data: {
-          "query": event.target.value
-        },
-        success: function(result) {
-          if (result.body == undefined) {
-            var simplified = []
-          } else {
-            var simplified = result.body.tracks.items.map((result) => {
-            var artist = result.artists[0].name;
-            if (result.artists.length > 1) {
-              for (var i = 0; i < result.artists.length; i++) {
-                artist += ', ' + result.artists[i].name;
-              }
-            }
-              return {title: result.name,
-                      artist: artist, 
-                      imgurl: result.album.images[2].url,
-                      url: result.external_urls.spotify};
-            });
-          }
-          self.props.store.dispatch(actions.search(simplified));
-        }
-      }
-    );
+    // fetch results from server
+    this.props.socket.emit('SEARCH', event.target.value);
   }
 
   render() {

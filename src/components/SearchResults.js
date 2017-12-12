@@ -9,19 +9,8 @@ export default class SearchResults extends React.Component {
   }
 
   onClick(song) {
-    var self = this;
-    $.ajax({
-        method: "POST",
-        url: "http://localhost:3000/addSong",
-        data: {
-          "song": song,
-          "id": self.props.id
-        },
-        success: function(result) {
-          self.props.store.dispatch(actions.addSong(song));
-        }
-      }
-    );
+    var id = this.props.id;
+    this.props.socket.emit('ADD_SONG', {id: id, song: song});
   }
 
   render() {

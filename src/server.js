@@ -87,17 +87,6 @@ spotifyApi.clientCredentialsGrant()
     // Save the access token so that it's used in future calls
     spotifyApi.setAccessToken(data.body['access_token']);
 
-    // route '/search' with Spotify
-    app.post('/search', (req, res) => {
-      let query = req.body.query;
-
-      spotifyApi.searchTracks(query, {limit: 10})
-      .then(function(data) {
-        res.send(data);
-      }, function(err) {
-        res.send(err);
-      });
-    });
   }, function(err) {
     console.log('Something went wrong when retrieving an access token', err.message);
 });
@@ -112,16 +101,6 @@ mongoose.connect('mongodb://localhost/one-spot');
 
 // start listening once connection is opened
 mongoose.connection.on('open', function () {
-  /* FOR DEBUGGING
-  mongoose.connection.db.listCollections().toArray(function (err, names) {
-    if (err) {
-      console.log(err);
-    } else {
-      console.log(names);
-    }
-  });
-  */
-
   server.listen(port, err => {
       if (err) {
         return console.error(err);
@@ -129,9 +108,6 @@ mongoose.connection.on('open', function () {
       console.info(`Server running on http://localhost:${port} [${env}]`);
   });
 });
-
-let testroom = new Room( { id: 'test-room', list: [] } );
-testroom.save();
 
 /******************** EXPRESS POST ROUTING *******************/
 app.post('/addSong', (req, res) => {
@@ -144,14 +120,16 @@ app.post('/addSong', (req, res) => {
     room.save();
   });
 
-  // emit socket event
-  io.in(id).emit('Playlist_updated');
-
   res.send('"' + song.title + '" by "' + song.artist + '" added to room "' + id + '"');
 });
 
-app.post('/getPlaylist', (req, res) => {
-  let id = req.body.id;
+/******************** SOCKETIO SETUP *******************/
+io.on('connection', (socket) => {
+  // socket joins a room
+  let id = socket.handshake.query.id;
+  socket.join(id);
+
+  // send the updated playlsit as of joining room
   let list = [];
   Room.find({id: id}, (err, rooms) => {
     if (!rooms.length) { 
@@ -161,16 +139,48 @@ app.post('/getPlaylist', (req, res) => {
       let room = rooms[0]; // rooms are unique so there must be a single elt
       list = room.list;
     }
-    res.send(list);
+    socket.emit('UPDATE_PLAYLIST', list);
   });
-});
 
+  // set up listeners
+  socket.on('ADD_SONG', function (obj) {
+    let song = obj.song;
+    let id = obj.id;
+    let room;
+    Room.find({id: id}, (err, rooms) => {
+      room = rooms[0]; // rooms are unique so there must be a single elt
+      // adds song using mongodb
+      room.list.push(song);
+      room.save();
+      // notify others of change
+      let list = room.list;
+      io.in(id).emit('UPDATE_PLAYLIST', list);
+    });
+  });
 
-/******************** SOCKETIO SETUP *******************/
-io.on('connection', (socket) => {
-  // socket joins a room
-  let query = socket.handshake.query;
-  let id = socket.handshake.query.id;
-  console.log(query);
-  socket.join(id);
+  socket.on('SEARCH', function (query) {
+    // route '/search' with Spotify
+    spotifyApi.searchTracks(query, {limit: 10})
+    .then(function(data) {
+      var list = data.body.tracks.items.map((result) => {
+      var artist = result.artists[0].name;
+      if (result.artists.length > 1) {
+        for (var i = 0; i < result.artists.length; i++) {
+          artist += ', ' + result.artists[i].name;
+        }
+      }
+        return {title: result.name,
+                artist: artist, 
+                imgurl: result.album.images[2].url,
+                url: result.external_urls.spotify};
+      });
+
+      // emit the results
+      socket.emit('UPDATE_RESULTS', list);
+    }, function(err) {
+      console.log("error is " + err);
+    });
+
+  });
+
 });
