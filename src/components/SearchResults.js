@@ -25,8 +25,7 @@ export default class SearchResults extends React.Component {
           <td>{result.title}</td>
           <td>{result.artist}</td>
           <td>
-            <button type="button" className="btn btn-success" onClick={() => { this.onClick(result); } }>
-              Add
+            <button type="button" className="btn btn-success glyphicon glyphicon-plus" onClick={() => { this.onClick(result); } }>
             </button>
           </td>
         </tr>

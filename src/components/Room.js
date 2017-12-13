@@ -23,12 +23,13 @@ export default class Room extends React.Component {
     // Socket setup
     this.socket = io.connect('http://localhost:3000', {query: 'id=' + this.props.params.id });
 
+    var self = this;
     this.socket.on('UPDATE_PLAYLIST', (list) => {
-      this.store.dispatch(actions.updatePlaylist(list));
+      self.store.dispatch(actions.updatePlaylist(list));
     });
 
     this.socket.on('UPDATE_RESULTS', (list) => {
-      this.store.dispatch(actions.search(list));
+      self.store.dispatch(actions.search(list));
     });
   }
 
@@ -59,11 +60,8 @@ export default class Room extends React.Component {
       <div className="app-content">
         <div className="row h3">Welcome to "{id}"</div>
         <div className="row">
-          <div className="col-xs-4 text-center"> {searchdiv} </div>
-          <div className="col-xs-8 text-center"> <Playlist list={this.state.list}/> </div>
-        </div>
-        <div className="navigateBack">
-          <Link to="/">Home Page</Link>
+          <div className="col-sm-4 text-center"> {searchdiv} </div>
+          <div className="col-sm-8 text-center"> <Playlist socket={this.socket} id={id} list={this.state.list}/> </div>
         </div>
       </div>
     );

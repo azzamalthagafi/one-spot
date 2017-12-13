@@ -6,19 +6,11 @@ import { renderToString } from 'react-dom/server';
 import { match, RouterContext } from 'react-router';
 import routes from './routes';
 import NotFoundPage from './components/NotFoundPage';
-var bodyParser = require('body-parser')
-var spotifyWebAPI = require('spotify-web-api-node');
-var mongoose = require('mongoose');
-var Schema = mongoose.Schema;
-
-/******************** DATABASE SCHEMA *******************/
-// define roomSchema
-var roomSchema = new Schema({
-  id: { type: String, required: true, unique: true },
-  list: [ { title: String, artist: String, imgurl: String, url: String } ],
-});
-var Room = mongoose.model('Room', roomSchema);
-
+import _ from 'lodash';
+const bodyParser = require('body-parser')
+const cookieSession = require('cookie-session');
+const Room = require('./Room');
+const spotifyApi = require('./spotifyApi');
 
 /******************** EXPRESS SETUP *******************/
 // initialize the server and configure support for ejs templates
@@ -32,11 +24,20 @@ app.set('views', path.join(__dirname, 'views'));
 // define the folder that will be used for static assets
 app.use(Express.static(path.join(__dirname, 'static')));
 
+// middleware usage
 app.use( bodyParser.json() );       // to support JSON-encoded bodies
 app.use(bodyParser.urlencoded({     // to support URL-encoded bodies
   extended: true
 })); 
 
+app.use(cookieSession({
+  name: 'session',
+  secret: 'thisisnotsafebutiwilldoitsincethisisalearningproject',
+
+  maxAge: 24 * 60 * 60 * 1000
+}));
+
+/******************** EXPRESS ROUTING *******************/
 // universal routing and rendering
 app.get('*', (req, res) => {
   match(
@@ -63,64 +64,21 @@ app.get('*', (req, res) => {
         markup = renderToString(<NotFoundPage/>);
         res.status(404);
       }
-
       // render the index template with the embedded React markup
       return res.render('index', { markup });
     }
   );
 });
 
-/******************** SPOTIFY API SETUP *******************/
-const myid = "08d020451ba7408fa630fcfa73326016";
-const mysecret = "e4211eff2f01435493f3a684787f74d6";
-
-var spotifyApi = new spotifyWebAPI({
-  clientId : myid,
-  clientSecret : mysecret
-});
-
-spotifyApi.clientCredentialsGrant()
-  .then(function(data) {
-    console.log('The access token expires in ' + data.body['expires_in']);
-    console.log('The access token is ' + data.body['access_token']);
-
-    // Save the access token so that it's used in future calls
-    spotifyApi.setAccessToken(data.body['access_token']);
-
-  }, function(err) {
-    console.log('Something went wrong when retrieving an access token', err.message);
-});
-
-
-
 /******************** LISTEN & CONNECT TO DB *******************/
 const port = process.env.PORT || 3000;
 const env = process.env.NODE_ENV || 'production';
 
-mongoose.connect('mongodb://localhost/one-spot');
-
-// start listening once connection is opened
-mongoose.connection.on('open', function () {
-  server.listen(port, err => {
-      if (err) {
-        return console.error(err);
-      }
-      console.info(`Server running on http://localhost:${port} [${env}]`);
-  });
-});
-
-/******************** EXPRESS POST ROUTING *******************/
-app.post('/addSong', (req, res) => {
-  let song = req.body.song;
-  let id = req.body.id;
-  let room;
-  Room.find({id: id}, (err, rooms) => {
-    room = rooms[0]; // rooms are unique so there must be a single elt
-    room.list.push(song);
-    room.save();
-  });
-
-  res.send('"' + song.title + '" by "' + song.artist + '" added to room "' + id + '"');
+server.listen(port, err => {
+    if (err) {
+      return console.error(err);
+    }
+    console.info(`Server running on http://localhost:${port} [${env}]`);
 });
 
 /******************** SOCKETIO SETUP *******************/
@@ -129,58 +87,56 @@ io.on('connection', (socket) => {
   let id = socket.handshake.query.id;
   socket.join(id);
 
-  // send the updated playlsit as of joining room
-  let list = [];
-  Room.find({id: id}, (err, rooms) => {
-    if (!rooms.length) { 
-      let room = new Room({id: id, list: []});
-      room.save();
-    } else {
-      let room = rooms[0]; // rooms are unique so there must be a single elt
-      list = room.list;
+  // find or create room then send list.
+  Room.findOrCreate(id, (err, room) => {
+    if (!err) {
+      io.in(id).emit('UPDATE_PLAYLIST', room.list);
     }
-    socket.emit('UPDATE_PLAYLIST', list);
   });
 
-  // set up listeners
-  socket.on('ADD_SONG', function (obj) {
-    let song = obj.song;
+  // adding a song
+  socket.on('ADD_SONG', (obj) => {
     let id = obj.id;
-    let room;
-    Room.find({id: id}, (err, rooms) => {
-      room = rooms[0]; // rooms are unique so there must be a single elt
-      // adds song using mongodb
-      room.list.push(song);
-      room.save();
-      // notify others of change
-      let list = room.list;
-      io.in(id).emit('UPDATE_PLAYLIST', list);
+    let song = obj.song;
+    Room.addSong(song, id, (err, room) => {
+      if (!err) {
+        io.in(id).emit('UPDATE_PLAYLIST', room.list);
+      }
     });
   });
 
-  socket.on('SEARCH', function (query) {
-    // route '/search' with Spotify
-    spotifyApi.searchTracks(query, {limit: 10})
-    .then(function(data) {
-      var list = data.body.tracks.items.map((result) => {
-      var artist = result.artists[0].name;
-      if (result.artists.length > 1) {
-        for (var i = 0; i < result.artists.length; i++) {
-          artist += ', ' + result.artists[i].name;
-        }
-      }
-        return {title: result.name,
-                artist: artist, 
-                imgurl: result.album.images[2].url,
-                url: result.external_urls.spotify};
-      });
-
-      // emit the results
+  // searching for a song
+  socket.on('SEARCH', (query) => {
+    spotifyApi.search(query, (list) => {
       socket.emit('UPDATE_RESULTS', list);
-    }, function(err) {
-      console.log("error is " + err);
     });
+  });
 
+  // removing a song
+  socket.on('REMOVE_SONG', (obj) => {
+    let index = obj.index;
+    let id = obj.id;
+    Room.removeSong(index, id, (err, room) => {
+      io.in(id).emit('UPDATE_PLAYLIST', room.list);
+    });
+  });
+
+  // moving up a song
+  socket.on('MOVEUP_SONG', (obj) => {
+    let index = obj.index;
+    let id = obj.id;
+    Room.moveUp(index, id, (err, room) => {
+      io.in(id).emit('UPDATE_PLAYLIST', room.list);
+    });
+  });
+
+  // moving down a song
+  socket.on('MOVEDOWN_SONG', (obj) => {
+    let index = obj.index;
+    let id = obj.id;
+    Room.moveDown(index, id, (err, room) => {
+      io.in(id).emit('UPDATE_PLAYLIST', room.list);
+    });
   });
 
 });
